@@ -1,0 +1,26 @@
+services:
+  web:
+    build: .
+    env_file: .env
+    depends_on:
+      - db
+    ports:
+      - 8089:80
+    volumes:
+      - ./src:/var/www/html/src
+      - ./uploads:/var/uploads
+  
+  db: 
+    image: mariadb:12
+    restart: always
+    environment:
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD}
+      MARIADB_USER: accounts_images_user
+      MARIADB_PASSWORD: ${MARIADB_USER_PASSWORD}
+      MARIADB_DATABASE: accounts_images_db
+    volumes:
+      - ./initDb.sql:/docker-entrypoint-initdb.d/initDb.sql
+      - mariadb_data:/var/lib/mysql:Z
+
+volumes:
+  mariadb_data:
