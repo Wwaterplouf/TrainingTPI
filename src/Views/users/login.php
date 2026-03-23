@@ -13,7 +13,7 @@
                 </div>
 
                 <div class="card-body p-4">
-                    <form method="post" action="/login">
+                    <form method="post" action="/auth/login">
                         <?php if (!empty($data['error'])): ?>
                             <div class="alert alert-danger">
                                 <?= htmlspecialchars((string)$data['error'], ENT_QUOTES, 'UTF-8') ?>
@@ -52,6 +52,7 @@
                                     autocomplete="current-password"
                                 >
                             </div>
+                            <a class="form-text" href="/auth/passwordlost">Mot de passe oublié ?</a>
                         </div>
 
                         <div class="d-flex justify-content-between align-items-center">
@@ -72,7 +73,6 @@
                                 Créer un compte
                             </a>
                         </div>
-                        <a href="/passwordlost">Mot de passe oublié ?</a>
                     </form>
                 </div>
 

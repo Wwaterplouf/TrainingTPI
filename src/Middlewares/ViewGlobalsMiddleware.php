@@ -5,6 +5,7 @@ declare(strict_types=1);
 // (les types des paramètres et valeurs de retour sont vérifiés).
 
 namespace App\Middlewares;
+
 // Namespace de la classe pour l'organisation du projet et l'autoloading via Composer.
 
 use Psr\Http\Message\ResponseInterface as Response;

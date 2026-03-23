@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Models\PDOSingleton;
 use PDO;
 
 /**
@@ -41,7 +40,7 @@ class ARUser extends ActiveRecord
      */
     public function __construct(array $data = [])
     {
-         parent::__construct($data);
+        parent::__construct($data);
     }
 
     /**
@@ -58,9 +57,9 @@ class ARUser extends ActiveRecord
             return [];
         }
         $pdo = PDOSingleton::getInstance()->getConnection();
-        $sql = "SELECT roles.* FROM roles
+        $sql = 'SELECT roles.* FROM roles
                 INNER JOIN users_has_roles ON roles.id = users_has_roles.roles_id 
-                WHERE users_has_roles.users_id = :user_id";
+                WHERE users_has_roles.users_id = :user_id';
 
         $stmt = $pdo->prepare($sql);
         $stmt->execute(['user_id' => $this->id]);
@@ -109,7 +108,7 @@ class ARUser extends ActiveRecord
             return;
         }
         $pdo = PDOSingleton::getInstance()->getConnection();
-        $sql = "INSERT INTO users_has_roles (users_id, roles_id) VALUES (:user_id, :role_id)";
+        $sql = 'INSERT INTO users_has_roles (users_id, roles_id) VALUES (:user_id, :role_id)';
         $stmt = $pdo->prepare($sql);
         $stmt->execute([
             'user_id' => $this->id,
@@ -134,7 +133,7 @@ class ARUser extends ActiveRecord
 
         $pdo = PDOSingleton::getInstance()->getConnection();
 
-        $sql = "DELETE FROM users_has_roles WHERE users_id = :user_id AND roles_id = :role_id";
+        $sql = 'DELETE FROM users_has_roles WHERE users_id = :user_id AND roles_id = :role_id';
         $stmt = $pdo->prepare($sql);
         $stmt->execute([
             'user_id' => $this->id,
@@ -154,7 +153,7 @@ class ARUser extends ActiveRecord
      */
     public static function findById($id): ?ARUser
     {
-        $sql = "SELECT * FROM " . static::$table . " WHERE id = :id";
+        $sql = 'SELECT * FROM ' . static::$table . ' WHERE id = :id';
 
         $pdoInstance = PDOSingleton::getInstance();
         $stmt = $pdoInstance->getConnection()->prepare($sql);
@@ -192,13 +191,42 @@ class ARUser extends ActiveRecord
         $pdo = PDOSingleton::getInstance()->getConnection();
 
         // On cherche un seul utilisateur par username.
-        $sql = "SELECT * FROM " . static::$table . " 
+        $sql = 'SELECT * FROM ' . static::$table . ' 
                 WHERE username = :username
-                LIMIT 1";
+                LIMIT 1';
 
         $stmt = $pdo->prepare($sql);
         $stmt->execute([
             'username' => $username,
+        ]);
+
+        $data = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($data) {
+            // On reconstruit un objet User.
+            // Le password est ici le hash stocké en base.
+            return new ARUser(
+                $data
+            );
+        }
+
+        // Aucun utilisateur correspondant au username.
+        return null;
+    }
+
+    public static function findByPasswordHash(string $pwd): ?ARUser
+    {
+        // Connexion PDO via le singleton.
+        $pdo = PDOSingleton::getInstance()->getConnection();
+
+        // On cherche un seul utilisateur par username.
+        $sql = 'SELECT * FROM ' . static::$table . ' 
+                WHERE password = :password
+                LIMIT 1';
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([
+            'password' => $pwd,
         ]);
 
         $data = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -224,7 +252,7 @@ class ARUser extends ActiveRecord
     {
         $pdo = PDOSingleton::getInstance();
 
-        $stmt = $pdo->getConnection()->query("SELECT * FROM " . static::$table . ";");
+        $stmt = $pdo->getConnection()->query('SELECT * FROM ' . static::$table . ';');
         $datas = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         $result = [];
@@ -256,7 +284,7 @@ class ARUser extends ActiveRecord
     public static function isValid($username, $password): bool
     {
         $pdoInstance = PDOSingleton::getInstance();
-        $sql = "SELECT * FROM " . static::$table . " WHERE username = :username;";
+        $sql = 'SELECT * FROM ' . static::$table . ' WHERE username = :username;';
 
         $stmt = $pdoInstance->getConnection()->prepare($sql);
         $stmt->execute(['username' => $username]);
@@ -267,9 +295,9 @@ class ARUser extends ActiveRecord
         // Si un utilisateur existe et que le mot de passe en clair correspond au hash stocké.
         if ($user && password_verify($password, $user['password'])) {
             // Créer l'objet User pour récupérer les rôles
-            $userObj = ARUser::findById($user['id']);            
-            $roles = $userObj->getRoles();            
-            $roleNames = array_map(fn($role) => $role->name, $roles);
+            $userObj = ARUser::findById($user['id']);
+            $roles = $userObj->getRoles();
+            $roleNames = array_map(fn ($role) => $role->name, $roles);
 
             // On stocke en session les informations nécessaires pour l'authentification.
             // Ces données seront utilisées ensuite dans tout le reste de l'application.
@@ -308,8 +336,8 @@ class ARUser extends ActiveRecord
             // Début de transaction
             $pdo->beginTransaction();
 
-            $sql = "INSERT INTO " . static::$table . " (username, password) 
-                VALUES (:username, :password);";
+            $sql = 'INSERT INTO ' . static::$table . ' (username, password) 
+                VALUES (:username, :password);';
 
             $stmt = $pdo->prepare($sql);
 
@@ -349,10 +377,10 @@ class ARUser extends ActiveRecord
      */
     protected function updateRaw(\PDO $pdo): void
     {
-        $sql = "UPDATE " . static::$table . " 
+        $sql = 'UPDATE ' . static::$table . ' 
             SET username = :username, 
                 password = :password 
-            WHERE id = :id;";
+            WHERE id = :id;';
 
         $stmt = $pdo->prepare($sql);
 
@@ -396,7 +424,7 @@ class ARUser extends ActiveRecord
      */
     protected function deleteRaw(\PDO $pdo): void
     {
-        $sql = "DELETE FROM " . static::$table . " WHERE id = :id";
+        $sql = 'DELETE FROM ' . static::$table . ' WHERE id = :id';
         $stmt = $pdo->prepare($sql);
         $stmt->execute(['id' => $this->id]);
     }
@@ -456,7 +484,7 @@ class ARUser extends ActiveRecord
             }
 
             // Suppression des tâches liées
-            $sqlDeleteTasks = "DELETE FROM tasks WHERE users_id = :id";
+            $sqlDeleteTasks = 'DELETE FROM tasks WHERE users_id = :id';
             $stmtTasks = $pdo->prepare($sqlDeleteTasks);
             $stmtTasks->execute(['id' => $userId]);
 

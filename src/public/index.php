@@ -6,8 +6,8 @@ use App\Config\Containers\MiddlewareDefinition;
 use App\Config\Containers\PhpRenderDefinition;
 use App\Middlewares\AccessMiddleware;
 use App\Middlewares\ErrorHandler;
-use App\Middlewares\ViewGlobalsMiddleware;
 use App\Middlewares\SessionMiddleware;
+use App\Middlewares\ViewGlobalsMiddleware;
 use App\Routes\Web;
 use DI\ContainerBuilder;
 use Slim\Factory\AppFactory;
@@ -21,7 +21,7 @@ $containerBuilder = new ContainerBuilder();
 // Enregistre chaque groupe de définitions
 (new PhpRenderDefinition())($containerBuilder);     // PhpRenderer + globals
 (new HttpDefinition())($containerBuilder);          // ResponseFactoryInterface
-(new MiddlewareDefinition ())($containerBuilder);   // ViewGlobalsMiddleware + SessionMiddleware
+(new MiddlewareDefinition())($containerBuilder);   // ViewGlobalsMiddleware + SessionMiddleware
 (new ErrorDefinition())($containerBuilder);         // ErrorHandler
 
 $container = $containerBuilder->build();
@@ -43,4 +43,3 @@ Web::register($app, $container->get(PhpRenderer::class));
 
 // --- Run ---
 $app->run();
-

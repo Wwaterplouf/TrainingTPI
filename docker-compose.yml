@@ -2,6 +2,9 @@ services:
   web:
     build: .
     env_file: .env
+    # depends_on:
+    #   db:
+    #     condition: service_healthy
     depends_on:
       - db
     ports:
@@ -21,6 +24,12 @@ services:
     volumes:
       - ./initDb.sql:/docker-entrypoint-initdb.d/initDb.sql
       - mariadb_data:/var/lib/mysql:Z
+    healthcheck:
+      test: ["CMD-SHELL", "mysql -u accounts_images_user -p${MARIADB_USER_PASSWORD} -e 'SELECT 1'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
 volumes:
   mariadb_data:

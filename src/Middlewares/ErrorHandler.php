@@ -7,8 +7,8 @@ namespace App\Middlewares;
 use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
-use Slim\Exception\HttpNotFoundException;
 use Slim\Exception\HttpForbiddenException;
+use Slim\Exception\HttpNotFoundException;
 use Slim\Exception\HttpUnauthorizedException;
 use Slim\Views\PhpRenderer;
 use Throwable;
@@ -50,10 +50,10 @@ final class ErrorHandler
         $data = [
             'pagetitle' => 'Erreur serveur',
             'message' => null,
-            'file'    => null,
-            'line'    => null,
-            'trace'   => null,
-            'debug'   => $displayErrorDetails,
+            'file' => null,
+            'line' => null,
+            'trace' => null,
+            'debug' => $displayErrorDetails,
         ];
 
         if ($exception instanceof HttpNotFoundException) {
@@ -64,8 +64,7 @@ final class ErrorHandler
             if ($displayErrorDetails) {
                 $data['message'] = $exception->getMessage();
             }
-        }
-        elseif ($exception instanceof HttpForbiddenException || $exception instanceof HttpUnauthorizedException) {
+        } elseif ($exception instanceof HttpForbiddenException || $exception instanceof HttpUnauthorizedException) {
             $status = 403;
             $template = '403.php';
             $data['pagetitle'] = 'Accès interdit';
@@ -73,13 +72,12 @@ final class ErrorHandler
             if ($displayErrorDetails) {
                 $data['message'] = $exception->getMessage();
             }
-        }
-        else {
+        } else {
             if ($displayErrorDetails) {
                 $data['message'] = $exception->getMessage();
-                $data['file']    = $exception->getFile();
-                $data['line']    = $exception->getLine();
-                $data['trace']   = $exception->getTraceAsString();
+                $data['file'] = $exception->getFile();
+                $data['line'] = $exception->getLine();
+                $data['trace'] = $exception->getTraceAsString();
             }
         }
 

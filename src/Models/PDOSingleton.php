@@ -19,7 +19,7 @@ class PDOSingleton
 
     private function __construct()
     {
-        $this->pass = getenv("MARIADB_USER_PASSWORD");
+        $this->pass = getenv('MARIADB_USER_PASSWORD');
         $dsn = "mysql:host=$this->host;dbname=$this->db;charset=$this->charset";
         $options = [
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, // Gérer les erreurs avec des exceptions
@@ -33,12 +33,13 @@ class PDOSingleton
         }
     }
 
-    private function __clone() {} 
+    private function __clone()
+    {
+    }
 
     public static function getInstance()
     {
-        if (self::$instance === null)
-        {
+        if (self::$instance === null) {
             self::$instance = new self();
         }
         return self::$instance;

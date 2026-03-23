@@ -7,5 +7,5 @@
         <p>Vous n'avez pas les droits nécessaires pour accéder à cette ressource.</p>
     <?php endif; ?>
 
-    <a href="/" class="btn btn-primary mt-4">Retourner à l'accueil</a>
+    <a href="/home" class="btn btn-primary mt-4">Retourner à l'accueil</a>
 </div>

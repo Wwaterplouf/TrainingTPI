@@ -2,9 +2,7 @@
 
 namespace App\Models;
 
-use App\Models\PDOSingleton;
 use PDO;
-use ReflectionClass;
 
 abstract class ActiveRecord
 {
@@ -67,7 +65,7 @@ abstract class ActiveRecord
     public static function findAll()
     {
         $pdoInstance = PDOSingleton::getInstance();
-        $stmt = $pdoInstance->getConnection()->query("SELECT * FROM " . static::$table);
+        $stmt = $pdoInstance->getConnection()->query('SELECT * FROM ' . static::$table);
         $datas = $stmt->fetchAll(PDO::FETCH_ASSOC);
         $result = [];
         foreach ($datas as $row) {
@@ -79,7 +77,7 @@ abstract class ActiveRecord
     public static function findById($id)
     {
         // Construction de la requête SQL pour récupérer un enregistrement spécifique
-        $sql = "SELECT * FROM " . static::$table . " WHERE id = :id";
+        $sql = 'SELECT * FROM ' . static::$table . ' WHERE id = :id';
         // Récupère une instance de PDO via le singleton
         $pdoInstance = PDOSingleton::getInstance();
         // Prépare la requête pour éviter les injections SQL
@@ -108,7 +106,7 @@ abstract class ActiveRecord
             // Appel du hook : permet aux classes enfants d'intervenir
             $this->beforeDelete();
             // Suppression de l'enregistrement principal
-            $sql = "DELETE FROM " . static::$table . " WHERE id = :id";
+            $sql = 'DELETE FROM ' . static::$table . ' WHERE id = :id';
             $this->executeQuery($sql, ['id' => $property->getValue($this)]);
             $this->commit();
             return true;
@@ -212,5 +210,7 @@ abstract class ActiveRecord
         }
     }
 
-    protected function beforeDelete() {}
+    protected function beforeDelete()
+    {
+    }
 }

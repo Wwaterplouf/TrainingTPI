@@ -2,16 +2,13 @@
 
 namespace Models;
 
-use Config\PDOSingleton;
-use Exception;
 use App\Models\ActiveRecord;
+use Exception;
 use PDO;
-use Slim\Exception\HttpNotImplementedException;
 
 class ARProfile extends ActiveRecord
 {
-
-    protected static $table = "profiles";
+    protected static $table = 'profiles';
 
     public $id = null;
     public $first_name = '';
@@ -33,12 +30,12 @@ class ARProfile extends ActiveRecord
         if ($infosOk === true) {
             try {
                 $this->beginTransaction();
-                $sql = "INSERT INTO " . self::$table . "(first_name, last_name, email, bio) VALUES (:first_name, :last_name, :email, :bio);";
+                $sql = 'INSERT INTO ' . self::$table . '(first_name, last_name, email, bio) VALUES (:first_name, :last_name, :email, :bio);';
                 $this->executeQuery($sql, [
                     'first_name' => $this->first_name,
                     'last_name' => $this->last_name,
                     'email' => $this->email,
-                    'bio' => $this->bio
+                    'bio' => $this->bio,
                 ]);
                 $this->id = $this->pdoConnection->lastInsertId();
 
@@ -59,13 +56,13 @@ class ARProfile extends ActiveRecord
         if ($infosOk === true) {
             try {
                 $this->beginTransaction();
-                $sql = "UPDATE " . self::$table . " SET first_name = :first_name, last_name = :last_name, email = :email, bio = :bio WHERE id = :id;";
+                $sql = 'UPDATE ' . self::$table . ' SET first_name = :first_name, last_name = :last_name, email = :email, bio = :bio WHERE id = :id;';
                 $this->executeQuery($sql, [
                     'id' => $this->id,
                     'first_name' => $this->first_name,
                     'last_name' => $this->last_name,
                     'email' => $this->email,
-                    'bio' => $this->bio
+                    'bio' => $this->bio,
                 ]);
                 $this->updateSkills();
                 $this->commit();
@@ -81,8 +78,8 @@ class ARProfile extends ActiveRecord
 
     protected function beforeDelete()
     {
-        $sqlDelete = "DELETE FROM profiles_skills WHERE profile_id = :id";
-        $this->executeQuery($sqlDelete, ["id" => $this->id]);
+        $sqlDelete = 'DELETE FROM profiles_skills WHERE profile_id = :id';
+        $this->executeQuery($sqlDelete, ['id' => $this->id]);
     }
 
     // public function getCommandes()
@@ -99,12 +96,12 @@ class ARProfile extends ActiveRecord
         $this->first_name = filter_var($this->first_name, FILTER_SANITIZE_FULL_SPECIAL_CHARS);
         $this->last_name = filter_var($this->last_name, FILTER_SANITIZE_FULL_SPECIAL_CHARS);
         if (!$this->first_name || !$this->last_name || strlen($this->first_name) < 2 || strlen($this->last_name) < 2) {
-            $diagnostic["ErrorName"] = "Nom/Prenom incorrects";
+            $diagnostic['ErrorName'] = 'Nom/Prenom incorrects';
         }
 
         $this->email = filter_var($this->email, FILTER_VALIDATE_EMAIL);
-        if (!$this->email || $this->executeQuery("SELECT id FROM profiles WHERE email = :email", ["email" => $this->email])->fetch()) {
-            $diagnostic["ErrorEmail"] = "Email invalide ou déjà pris";
+        if (!$this->email || $this->executeQuery('SELECT id FROM profiles WHERE email = :email', ['email' => $this->email])->fetch()) {
+            $diagnostic['ErrorEmail'] = 'Email invalide ou déjà pris';
         }
 
         $this->bio = filter_var($this->bio, FILTER_SANITIZE_FULL_SPECIAL_CHARS);
@@ -113,7 +110,7 @@ class ARProfile extends ActiveRecord
         foreach ($this->skills as $skill) {
             $skill = filter_var($skill, FILTER_SANITIZE_FULL_SPECIAL_CHARS);
             if (strlen($skill) < 2) {
-                $diagnostic["ErrorSkills"] = "Erreur dans le tableau des skills (2 char min par skill)";
+                $diagnostic['ErrorSkills'] = 'Erreur dans le tableau des skills (2 char min par skill)';
             } else {
                 $skills[] = $skill;
             }
@@ -130,9 +127,9 @@ class ARProfile extends ActiveRecord
     {
         try {
             foreach ($this->skills as $skill) {
-                $idSkill = $this->executeQuery("SELECT id FROM skills WHERE `name` = :name;", ["name" => $skill])->fetch()["id"];
+                $idSkill = $this->executeQuery('SELECT id FROM skills WHERE `name` = :name;', ['name' => $skill])->fetch()['id'];
                 if (!$idSkill) {
-                    $skill = new ARSkill(["name" => $skill]);
+                    $skill = new ARSkill(['name' => $skill]);
                     $skill->create();
                     $idSkill = (int) $this->pdoConnection->lastInsertId();
                 }
@@ -156,6 +153,6 @@ class ARProfile extends ActiveRecord
 
     public function getSkills()
     {
-        return $this->belongsToMany(ARSkill::class, "profiles_skills", "profile_id", "skill_id");
+        return $this->belongsToMany(ARSkill::class, 'profiles_skills', 'profile_id', 'skill_id');
     }
 }

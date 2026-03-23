@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
+use PHPMailer\PHPMailer\PHPMailer;
 
 final class MailerService
 {
@@ -28,7 +28,7 @@ final class MailerService
      * @throws Exception
      */
     public function send(
-        string $to = getenv(""),
+        string $to,
         string $toName,
         string $subject,
         string $htmlBody,

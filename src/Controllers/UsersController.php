@@ -3,10 +3,11 @@
 namespace App\Controllers;
 
 // Import des classes nécessaires
-use Exception;
-use App\Models\ARUser;
-use App\Models\ARRole;
 use App\Models\Alert;
+use App\Models\ARRole as ModelsARRole;
+use App\Models\ARUser;
+use App\Services\MailerService;
+use Exception;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Slim\Views\PhpRenderer;
@@ -32,6 +33,68 @@ class UsersController
     {
     }
 
+    public function sendMailResetPassword(Request $request, Response $response)
+    {
+        $body = $request->getParsedBody();
+
+        // 1) Récupère et nettoie les champs
+        $email = trim((string)($body['email'] ?? ''));
+        $username = filter_var(trim($body['username'] ?? ''), FILTER_SANITIZE_SPECIAL_CHARS);
+
+        $errors = [];
+        // 2) Validation minimale
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $errors[] = 'Adresse e-mail invalide.';
+        }
+        if (!$username || !ARUser::findByUsername($username)) {
+            $errors[] = 'Utilisateur invalide';
+        }
+        if ($errors) {
+            http_response_code(422);
+            foreach($errors as $e)
+            {
+                Alert::add('danger', $e);
+            }
+            return $this->view->render($response, 'users/lostPassword.php');
+        }
+        else {
+            $user = ARUser::findByUsername($username);
+            $mailerService = new MailerService();
+            $mailerService->send($email, $username, 'Réinitialisation de votre mot de passe', 'Lien de réinitialisation : http://localhost:8089/users/resetpassword/' . substr($user->password, 0, 10));
+            Alert::add('success', "Email envoyé, veuillez vérifier votre boite mail");
+            return $this->view->render($response, 'users/login.php');
+        }
+
+    }
+
+    public function showResetPasswordForm(Request $request, Response $response, $args)
+    {
+        $password_hash = filter_var($args["hash"], FILTER_SANITIZE_SPECIAL_CHARS) ?? '';
+        // var_dump($password_hash);
+        // die;
+        $users = ARUser::findAll();
+        $userFound = null;
+        foreach($users as $user)    {
+            if (substr($user->password, 0, 10) == $password_hash)   {
+                $userFound == $user;
+                break;
+            }
+        }
+
+        if (!$password_hash || !$user)  {
+            Alert::add('danger', 'Utilisateur introuvable');
+            return $this->view->render($response, 'users/lostPassword.php');
+        }
+        else {
+            return $this->view->render($response, 'users/resetPassword.php', ["idUser" => $userFound->id ?? '']);
+        }
+    }
+
+    public function updateUserPasswordFromReset(Request $request, Response $response, $args)
+    {
+        
+    }
+
     /**
      * Affiche le formulaire de login.
      *
@@ -44,7 +107,7 @@ class UsersController
     public function formLoginShow(Request $request, Response $response, $args): Response
     {
         // Affiche simplement la vue /login.php sans données supplémentaires.
-        return $this->view->render($response, '/login.php');
+        return $this->view->render($response, 'users/login.php');
     }
 
     /**
@@ -98,7 +161,7 @@ class UsersController
 
             // Redirection vers la page d'accueil en cas de succès (302 = redirection temporaire).
             return $response
-                ->withHeader('Location', '/')
+                ->withHeader('Location', '/home')
                 ->withStatus(302);
         }
 
@@ -177,14 +240,14 @@ class UsersController
 
             // Données spécifiques au formulaire (ex: mode d'affichage).
             $dataDetail = [
-                'mode' => 'Modifier'
+                'mode' => 'Modifier',
             ];
         } else {
             // Mode create : on souhaite ajouter un nouvel utilisateur.
 
             $dataLayout = ['title' => 'Ajouter'];
             $dataDetail = [
-                'mode' => 'Ajouter'
+                'mode' => 'Ajouter',
             ];
         }
 
@@ -256,14 +319,14 @@ class UsersController
         if (!$id) {
             // CREATE : mot de passe obligatoire.
             if ($password === '') {
-                $errors['password'][] = "Le mot de passe est obligatoire.";
+                $errors['password'][] = 'Le mot de passe est obligatoire.';
             } elseif (!preg_match($passwordPattern, $password)) {
-                $errors['password'][] = "Le mot de passe doit contenir au moins 8 caractères dont au moins un caractère spécial.";
+                $errors['password'][] = 'Le mot de passe doit contenir au moins 8 caractères dont au moins un caractère spécial.';
             }
         } else {
             // UPDATE : mot de passe optionnel, mais s'il est saisi il doit respecter les règles.
             if ($password !== '' && !preg_match($passwordPattern, $password)) {
-                $errors['password'][] = "Le mot de passe doit contenir au moins 8 caractères dont au moins un caractère spécial.";
+                $errors['password'][] = 'Le mot de passe doit contenir au moins 8 caractères dont au moins un caractère spécial.';
             }
         }
 
@@ -316,7 +379,7 @@ class UsersController
                 $user->update();   // Transaction interne dans le modèle
 
                 // Gérer les rôles via pivot
-                $allRoles = \App\Models\ARRole::findAll();
+                $allRoles = ModelsARRole::findAll();
                 foreach ($allRoles as $role) {
                     if (in_array($role->id, $selectedRoles)) {
                         $user->assignRole($role);

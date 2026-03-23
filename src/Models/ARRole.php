@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Models\PDOSingleton;
 use PDO;
 
 /**
@@ -44,7 +43,7 @@ class ARRole extends ActiveRecord
      */
     public static function findById($id): ?ARRole
     {
-        $sql = "SELECT * FROM " . static::$table . " WHERE id = :id";
+        $sql = 'SELECT * FROM ' . static::$table . ' WHERE id = :id';
 
         $pdoInstance = PDOSingleton::getInstance();
         $stmt = $pdoInstance->getConnection()->prepare($sql);
@@ -73,9 +72,9 @@ class ARRole extends ActiveRecord
     {
         $pdo = PDOSingleton::getInstance()->getConnection();
 
-        $sql = "SELECT * FROM " . static::$table . " 
+        $sql = 'SELECT * FROM ' . static::$table . ' 
                 WHERE name = :name
-                LIMIT 1";
+                LIMIT 1';
 
         $stmt = $pdo->prepare($sql);
         $stmt->execute([
@@ -96,13 +95,13 @@ class ARRole extends ActiveRecord
     /**
      * Récupère l'ensemble des rôles.
      *
-     * @return Role[] Liste d'objets Role.
+     * @return ARRole[] Liste d'objets Role.
      */
     public static function findAll(): array
     {
         $pdo = PDOSingleton::getInstance();
 
-        $stmt = $pdo->getConnection()->query("SELECT * FROM " . static::$table . ";");
+        $stmt = $pdo->getConnection()->query('SELECT * FROM ' . static::$table . ';');
         $datas = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         $result = [];
@@ -127,8 +126,8 @@ class ARRole extends ActiveRecord
     {
         $pdo = PDOSingleton::getInstance()->getConnection();
 
-        $sql = "INSERT INTO " . static::$table . " (name, description) 
-                VALUES (:name, :description);";
+        $sql = 'INSERT INTO ' . static::$table . ' (name, description) 
+                VALUES (:name, :description);';
 
         $stmt = $pdo->prepare($sql);
 
@@ -149,10 +148,10 @@ class ARRole extends ActiveRecord
     {
         $pdo = PDOSingleton::getInstance()->getConnection();
 
-        $sql = "UPDATE " . static::$table . " 
+        $sql = 'UPDATE ' . static::$table . ' 
                 SET name = :name, 
                     description = :description 
-                WHERE id = :id;";
+                WHERE id = :id;';
 
         $stmt = $pdo->prepare($sql);
 
@@ -172,7 +171,7 @@ class ARRole extends ActiveRecord
     {
         $pdo = PDOSingleton::getInstance()->getConnection();
 
-        $sql = "DELETE FROM " . static::$table . " WHERE id = :id";
+        $sql = 'DELETE FROM ' . static::$table . ' WHERE id = :id';
         $stmt = $pdo->prepare($sql);
         $stmt->execute(['id' => $this->id]);
     }

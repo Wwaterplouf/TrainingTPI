@@ -43,11 +43,11 @@ REFERENCES roles(id);
 -------------------------------------
 
 INSERT INTO users (`username`, `password`)
-VALUES            ("youseur", "$2y$12$2nhanVWKeyTNjBseD4dE1.BcLvMIkkRagIv6zEBEpVrO9WsE0H4J.");
+VALUES            ("youseur", "$2y$12$ivzM28EAPNgzSpDRXh1mPO8YQHv.X5/ngq1meqtljIyGnWp0jsLNK"); -- Hash d'un mot de passe correspondant à : souper
 
 INSERT INTO roles (`name`, `description`)
 VALUES            ("user", "utilisateur normal"),
                   ("admin", "administrateur qui peut modérer les comptes");
 
-INSERT INTO users_roles(`users_id`, `roles_id`)
-VALUES                 (1, 1);
+INSERT INTO users_has_roles(`users_id`, `roles_id`)
+VALUES                     (1, 1);
