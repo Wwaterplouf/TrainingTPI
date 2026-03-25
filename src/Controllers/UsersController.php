@@ -6,6 +6,7 @@ namespace App\Controllers;
 use App\Models\Alert;
 use App\Models\ARRole as ModelsARRole;
 use App\Models\ARUser;
+use App\Models\JwtManager;
 use App\Services\MailerService;
 use Exception;
 use Psr\Http\Message\ResponseInterface as Response;
@@ -29,70 +30,113 @@ class UsersController
      *
      * @param PhpRenderer $view Moteur de templates utilisé pour rendre les vues PHP.
      */
-    public function __construct(private PhpRenderer $view)
-    {
-    }
+    public function __construct(private PhpRenderer $view) {}
 
     public function sendMailResetPassword(Request $request, Response $response)
     {
         $body = $request->getParsedBody();
 
-        // 1) Récupère et nettoie les champs
-        $email = trim((string)($body['email'] ?? ''));
         $username = filter_var(trim($body['username'] ?? ''), FILTER_SANITIZE_SPECIAL_CHARS);
 
         $errors = [];
-        // 2) Validation minimale
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            $errors[] = 'Adresse e-mail invalide.';
-        }
-        if (!$username || !ARUser::findByUsername($username)) {
-            $errors[] = 'Utilisateur invalide';
-        }
-        if ($errors) {
-            http_response_code(422);
-            foreach($errors as $e)
-            {
-                Alert::add('danger', $e);
+
+        if ($username === '') {
+            $errors['username'][] = "Le nom d'utilisateur est obligatoire.";
+        } else {
+            // Unicité du username (en tenant compte du cas update) :
+            // on cherche un éventuel autre utilisateur portant le même nom.
+            $existing = ARUser::findByUsername($username);
+
+            if (!$existing) {
+                $errors['username'][] = "Aucun utilisateur trouvé avec ce nom";
             }
-            return $this->view->render($response, 'users/lostPassword.php');
         }
+
+        if ($errors) {
+            return $this->view->render($response, 'users/lostPassword.php', array_merge($errors, ["username" => $username]));
+        }    
         else {
             $user = ARUser::findByUsername($username);
             $mailerService = new MailerService();
-            $mailerService->send($email, $username, 'Réinitialisation de votre mot de passe', 'Lien de réinitialisation : http://localhost:8089/users/resetpassword/' . substr($user->password, 0, 10));
+            $jwtManager = new JwtManager();
+            $mailerService->send($user->email, $username, 'Réinitialisation de votre mot de passe', 'Bonjour, voici votre lien de réinitialisation : http://trainingtpi.localhost:8080/users/resetpassword/' . $jwtManager->createToken(["username" => $user->username, "date" => time()]));
             Alert::add('success', "Email envoyé, veuillez vérifier votre boite mail");
-            return $this->view->render($response, 'users/login.php');
+            return $response->withHeader('Location', "/message")
+                            ->withStatus(302);
         }
-
     }
 
     public function showResetPasswordForm(Request $request, Response $response, $args)
     {
-        $password_hash = filter_var($args["hash"], FILTER_SANITIZE_SPECIAL_CHARS) ?? '';
-        // var_dump($password_hash);
-        // die;
-        $users = ARUser::findAll();
-        $userFound = null;
-        foreach($users as $user)    {
-            if (substr($user->password, 0, 10) == $password_hash)   {
-                $userFound == $user;
-                break;
-            }
+        $token = filter_var($args["token"], FILTER_SANITIZE_SPECIAL_CHARS) ?? '';
+        $jwtManager = new JwtManager();
+        if (!$jwtManager->validateToken($token)) {
+            Alert::add('danger', 'Token invalide');
+            return $response->withHeader('Location', 'auth/passwordlost')
+                ->withStatus(302);
+        } else if ($jwtManager->expiratedToken($token)) {
+            Alert::add('danger', 'Token expiré');
+            return $response->withHeader('Location', 'auth/passwordlost')
+                ->withStatus(302);
         }
+        $datas = $jwtManager->decodeToken($token);
+        $user = ARUser::findByUsername($datas["username"]);
 
-        if (!$password_hash || !$user)  {
+        if (!$token || !$user) {
             Alert::add('danger', 'Utilisateur introuvable');
             return $this->view->render($response, 'users/lostPassword.php');
-        }
-        else {
-            return $this->view->render($response, 'users/resetPassword.php', ["idUser" => $userFound->id ?? '']);
+        } else {
+            return $this->view->render($response, 'users/resetPassword.php', ["idUser" => $user->id ?? '']);
         }
     }
 
-    public function updateUserPasswordFromReset(Request $request, Response $response, $args)
+    public function updateUserPasswordFromReset(Request $request, Response $response)
     {
-        
+        $body = $request->getParsedBody();
+        $idUser = filter_var($body["idUser"] ?? "", FILTER_VALIDATE_INT);
+        $user = ARUser::findById($idUser);
+        if ($user) {
+            $pwd = $body["pwd"];
+
+            // --- Validation mot de passe ---
+            $passwordPattern = '/^(?=.*[^a-zA-Z0-9]).{8,}$/';
+            $errors = [];
+
+            if ($pwd === '') {
+                $errors['pwd'][] = 'Le mot de passe est obligatoire.';
+
+            } else if (!preg_match($passwordPattern, $pwd)) {
+                $errors['pwd'][] = 'Le mot de passe doit contenir au moins 8 caractères dont au moins un caractère spécial.';
+
+            } else if (password_verify($pwd, $user->password)) {
+                $errors['pwd'][] = 'Le mot de passe ne peut pas être le meme que l\'ancien';
+                
+            }
+            if ($pwd != $body["pwdConfirm"]) {
+                $errors['pwdConfirm'][] = 'Les mots de passe ne correspondent pas';
+            }
+
+            if ($errors)
+            {
+                return $this->view->render($response, '/users/resetPassword.php', ["idUser" => $idUser, "errors" => $errors]);
+            }
+
+            $user->password = password_hash($pwd, PASSWORD_DEFAULT);;
+
+            try {
+                $user->update();   // Transaction interne dans le modèle
+                Alert::add('success', 'Mot de passe mis a jour, vous pouvez vous reconnecter');
+                return $response->withHeader('Location', '/auth/login')
+                                ->withStatus(302);
+            } catch (Exception $e) {
+                Alert::add('danger', 'Une erreur est survenue durant la réinitialisation du mot de passe, veuillez réessayer');
+                return $this->view->render($response, '/users/resetPassword.php', ["idUser" => $body["idUser"] ?? '']);
+            }
+        } else {
+            Alert::add('danger', 'Utilisateur introuvable');
+            return $response->withHeader('Location', 'auth/passwordlost')
+                            ->withStatus(302);
+        }
     }
 
     /**
@@ -171,7 +215,7 @@ class UsersController
 
         // Redirection vers la page de login pour une nouvelle tentative.
         return $response
-            ->withHeader('Location', '/login')
+            ->withHeader('Location', '/auth/login')
             ->withStatus(302); // 302 pour une redirection temporaire
     }
 
@@ -278,7 +322,7 @@ class UsersController
      * @return Response Réponse HTTP redirigeant en fonction de l'action (create / update)
      *                  ou contenant la vue du formulaire en cas d'erreur.
      */
-    public function formPost(Request $request, Response $response): Response
+    public function formPost(Request $request, Response $response, array $args): Response
     {
         // Récupération des données POST (ou autre format parsé) sous forme de tableau associatif.
         $data = $request->getParsedBody() ?? [];
@@ -289,6 +333,7 @@ class UsersController
 
         // Récupération / normalisation des champs du formulaire.
         $username = trim($data['username'] ?? '');
+        $email = filter_var(trim($data['email'] ?? ''), FILTER_VALIDATE_EMAIL);
         $password = $data['password'] ?? '';
         $selectedRoles = $data['roles'] ?? [];  // Array of role IDs
 
@@ -309,6 +354,19 @@ class UsersController
                 // alors le username est déjà pris par un autre compte.
                 if (!$id || (int) $existing->id !== (int) $id) {
                     $errors['username'][] = "Ce nom d'utilisateur est déjà utilisé.";
+                }
+            }
+        }
+
+        // --- Validation email ---
+        if (!$email) {
+            $errors['email'][] = "L'email est obligatoire et doit être conforme.";
+        } else {
+            $existing = ARUser::findByEmail($email);
+
+            if ($existing) {
+                if (!$id || (int) $existing->id !== (int) $id) {
+                    $errors['email'][] = "Cet email est déjà utilisé.";
                 }
             }
         }
@@ -368,6 +426,7 @@ class UsersController
 
             // Mise à jour des champs.
             $user->username = $username;
+            $user->email = $email;
 
             // Si un nouveau mot de passe est fourni, on le hash ici AVANT l'update transactionnelle
             if ($password !== '') {
@@ -375,13 +434,69 @@ class UsersController
             }
             // Si $password === '', on conserve le hash existant déjà présent dans $user->password.
 
+            if ($email !== '') // Si on modifie l'email, il faut d'abord le valider avant de modifier l'utilisateur.
+            {
+                $mailerService = new MailerService();
+                $jwtManager = new JwtManager();
+                $token = $jwtManager->createToken(["user" => $user, "selectedRoles" => $selectedRoles, "date" => time(), "mode" => "update"]);
+                $mailerService->send(
+                    $email,
+                    $username,
+                    'Confirmation de la modification de votre compte',
+                    'Lien de confirmation : http://trainingtpi.localhost:8080/auth/registerfromtoken/' . $token
+                );
+                Alert::add('success', "Email envoyé, veuillez vérifier votre boite mail");
+                return $response
+                    ->withHeader('Location', '/message')
+                    ->withStatus(302);
+            }
+        }
+
+        // CREATE : création d'une nouvelle instance User.
+        $user = new ARUser();
+        $user->username = $username;
+        $user->email = $email;
+        $user->password = $password;  // Hash fait dans User::create()
+
+        $mailerService = new MailerService();
+        $jwtManager = new JwtManager();
+        $token = $jwtManager->createToken(["user" => $user, "selectedRoles" => $selectedRoles, "date" => time(), "mode" => "create"]);
+        $mailerService->send(
+            $email,
+            $username,
+            'Confirmation de la création de votre compte',
+            'Lien de confirmation : http://trainingtpi.localhost:8080/auth/registerfromtoken/' . $token
+        );
+        Alert::add('success', "Email envoyé, veuillez vérifier votre boite mail");
+        return $response
+            ->withHeader('Location', '/message')
+            ->withStatus(302);
+    }
+
+    public function confirmEmail(Request $request, Response $response, array $args)
+    {
+        $token = filter_var($args["token"], FILTER_SANITIZE_SPECIAL_CHARS) ?? '';
+        $jwtManager = new JwtManager();
+        if (!$jwtManager->validateToken($token)) {
+            Alert::add('danger', 'Token invalide');
+            return $response->withHeader('Location', '/auth/login')
+                ->withStatus(302);
+        } else if ($jwtManager->expiratedToken($token)) {
+            Alert::add('danger', 'Token expiré');
+            return $response->withHeader('Location', '/auth/login')
+                ->withStatus(302);
+        }
+        $datas = $jwtManager->decodeToken($token);
+
+        if ($datas["mode"] == "update") {
             try {
+                $user = $datas["user"];
                 $user->update();   // Transaction interne dans le modèle
 
                 // Gérer les rôles via pivot
                 $allRoles = ModelsARRole::findAll();
                 foreach ($allRoles as $role) {
-                    if (in_array($role->id, $selectedRoles)) {
+                    if (in_array($role->id, $datas["selectedRoles"])) {
                         $user->assignRole($role);
                     } else {
                         $user->removeRole($role);
@@ -397,38 +512,34 @@ class UsersController
                 Alert::add('danger', "Une erreur est survenue lors de la mise à jour de l'utilisateur.");
                 // Optionnel : logger $e->getMessage()
                 return $response
-                    ->withHeader('Location', $referer)
+                    ->withHeader('Location', '/auth/logout')
                     ->withStatus(302);
             }
-        }
+        } else {
+            try {
+                $user = new ARUser($datas["user"]);
+                $user->create();   // Transaction interne dans le modèle
 
-        // CREATE : création d'une nouvelle instance User.
-        $user = new ARUser();
-        $user->username = $username;
-        $user->password = $password;  // Hash fait dans User::create()
-
-        try {
-            $user->create();   // Transaction interne dans le modèle
-
-            // Assigner les rôles
-            foreach ($selectedRoles as $roleId) {
-                $role = \App\Models\ARRole::findById($roleId);
-                if ($role) {
-                    $user->assignRole($role);
+                // Assigner les rôles
+                foreach ($datas["selectedRoles"] as $roleId) {
+                    $role = \App\Models\ARRole::findById($roleId);
+                    if ($role) {
+                        $user->assignRole($role);
+                    }
                 }
+
+                Alert::add('success', "L'utilisateur a été ajouté. Vous pouvez vous connecter.");
+
+                return $response
+                    ->withHeader('Location', '/auth/login')
+                    ->withStatus(302);
+            } catch (\Throwable $e) {
+                Alert::add('danger', "Une erreur est survenue lors de la création de l'utilisateur.");
+                // Optionnel : logger $e->getMessage()
+                return $response
+                    ->withHeader('Location', '/auth/login')
+                    ->withStatus(302);
             }
-
-            Alert::add('success', "L'utilisateur a été ajouté. Vous pouvez vous connecter.");
-
-            return $response
-                ->withHeader('Location', '/login')
-                ->withStatus(302);
-        } catch (\Throwable $e) {
-            Alert::add('danger', "Une erreur est survenue lors de la création de l'utilisateur.");
-            // Optionnel : logger $e->getMessage()
-            return $response
-                ->withHeader('Location', $referer)
-                ->withStatus(302);
         }
     }
 

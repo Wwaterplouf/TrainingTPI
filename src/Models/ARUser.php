@@ -25,6 +25,10 @@ class ARUser extends ActiveRecord
     /** @var string */
     public $password = '';
 
+    public $email = '';
+
+    public $path_profile_picture = '';
+
     /**
      * Rôles de l'utilisateur pour RBAC via table pivot.
      * Changement : suppression de $role unique, utilisation de table pivot users_has_roles.
@@ -243,6 +247,33 @@ class ARUser extends ActiveRecord
         return null;
     }
 
+    public static function findByEmail(string $email): ?ARUser
+    {
+        // Connexion PDO via le singleton.
+        $pdo = PDOSingleton::getInstance()->getConnection();
+
+        // On cherche un seul utilisateur par username.
+        $sql = 'SELECT * FROM ' . static::$table . ' 
+                WHERE email = :email
+                LIMIT 1';
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([
+            'email' => $email,
+        ]);
+
+        $data = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($data) {
+            return new ARUser(
+                $data
+            );
+        }
+
+        // Aucun utilisateur correspondant à l'email.
+        return null;
+    }
+
     /**
      * Récupère l'ensemble des utilisateurs.
      *
@@ -336,8 +367,8 @@ class ARUser extends ActiveRecord
             // Début de transaction
             $pdo->beginTransaction();
 
-            $sql = 'INSERT INTO ' . static::$table . ' (username, password) 
-                VALUES (:username, :password);';
+            $sql = 'INSERT INTO ' . static::$table . ' (username, password, email) 
+                VALUES (:username, :password, :email);';
 
             $stmt = $pdo->prepare($sql);
 
@@ -345,6 +376,7 @@ class ARUser extends ActiveRecord
             $stmt->execute([
                 'username' => $this->username,
                 'password' => password_hash($this->password, PASSWORD_DEFAULT),
+                'email' => $this->email,
             ]);
 
             // Récupération de l'ID auto-incrémenté généré par l'insertion.
@@ -379,7 +411,8 @@ class ARUser extends ActiveRecord
     {
         $sql = 'UPDATE ' . static::$table . ' 
             SET username = :username, 
-                password = :password 
+                password = :password ,
+                email = :email
             WHERE id = :id;';
 
         $stmt = $pdo->prepare($sql);
@@ -387,6 +420,7 @@ class ARUser extends ActiveRecord
         $stmt->execute([
             'username' => $this->username,
             'password' => $this->password,
+            'email' => $this->email,
             'id' => $this->id,
         ]);
     }

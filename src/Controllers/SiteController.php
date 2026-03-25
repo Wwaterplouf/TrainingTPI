@@ -19,6 +19,9 @@ use Slim\Views\PhpRenderer;
  */
 class SiteController
 {
+
+    private const NB_ANIMES_PER_PAGE = 18;
+
     /**
      * Constructeur du contrôleur.
      *
@@ -34,6 +37,11 @@ class SiteController
     {
         return $response->withStatus(302)
                         ->withheader('Location', '/home');
+    }
+
+    public function renderMessage(Request $request, Response $response)
+    {
+        return $this->view->render($response, '/message.php');
     }
 
     /**
@@ -134,8 +142,7 @@ class SiteController
 
         $variables = [
             'page' => $page && $page >= 1 ? $page : 1,
-            'perPage' => 20,
-            'search' => $args['search'] ?? 'Fate',
+            'perPage' => self::NB_ANIMES_PER_PAGE,
         ];
 
         $http = new GuzzleHttp\Client();

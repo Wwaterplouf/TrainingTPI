@@ -7,8 +7,10 @@ USE accounts_images_db;
 
 CREATE TABLE users (
     `id` INT PRIMARY KEY AUTO_INCREMENT,
-    `username` VARCHAR(30) NOT NULL, 
-    `password` VARCHAR(255) NOT NULL
+    `username` VARCHAR(30) UNIQUE NOT NULL, 
+    `password` VARCHAR(255) NOT NULL,
+    `email` VARCHAR(50) UNIQUE NOT NULL,
+    `path_profile_picture` VARCHAR(50) NULL
 );
 
 CREATE TABLE roles (
@@ -42,12 +44,12 @@ REFERENCES roles(id);
 
 -------------------------------------
 
-INSERT INTO users (`username`, `password`)
-VALUES            ("youseur", "$2y$12$ivzM28EAPNgzSpDRXh1mPO8YQHv.X5/ngq1meqtljIyGnWp0jsLNK"); -- Hash d'un mot de passe correspondant à : souper
+INSERT INTO users (`username`, `password`, `email`)
+VALUES            ("youseur", "$2y$12$ivzM28EAPNgzSpDRXh1mPO8YQHv.X5/ngq1meqtljIyGnWp0jsLNK", "zoromihawk59@gmail.com"); -- Hash d'un mot de passe correspondant à : souper
 
 INSERT INTO roles (`name`, `description`)
 VALUES            ("user", "utilisateur normal"),
-                  ("admin", "administrateur qui peut modérer les comptes");
+                  ("admin", "administrateur qui peut modérer les comptes et les listes");
 
 INSERT INTO users_has_roles(`users_id`, `roles_id`)
 VALUES                     (1, 1);

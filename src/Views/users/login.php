@@ -69,7 +69,7 @@
                         <hr class="my-4">
 
                         <div class="text-center">
-                            <a href="/users/register" class="text-decoration-none">
+                            <a href="/auth/register" class="text-decoration-none">
                                 Créer un compte
                             </a>
                         </div>

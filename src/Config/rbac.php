@@ -6,6 +6,7 @@ return [
     // Routes accessibles sans être connecté
     'public' => [
         'home',
+        'message',
         'auth.login',
         'auth.login.post',
         'auth.register',
@@ -13,13 +14,14 @@ return [
         'auth.logout',
         'auth.resetform',
         'users.resetpassword',
+        'users.resetpassword.post',
         'users.sendmail',
     ],
 
     // Règles RBAC basées sur le préfixe du nom de route
     // IMPORTANT : l'ordre compte. Mettre les règles les plus spécifiques en premier si besoin.
     'rules' => [
-        'users.' => ['user'],
+        'users.' => ['users.view', 'lists'],
         'admin.' => ['admin'],
 
         // Routes "métier" : pas de rôle spécifique, mais nécessite d'être connecté

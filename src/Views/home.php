@@ -6,14 +6,14 @@
             $textStatus = '';
             if ($anime->endDate && $anime->status == "FINISHED")
             {
-                $textStatus = 'Finished : ' . ucfirst(strtolower($anime->season)) . ' ' . ($anime->seasonYear);
+                $textStatus = 'Finished : ' . ucfirst(strtolower($anime->season ?? "")) . ' ' . ($anime->seasonYear);
             }
             else if ($anime->startDate && $anime->status == "RELEASING")
             {
                 $textStatus = 'Releasing : Ep ' . $anime->episodes . ' (Started : ' . ($anime->startDate) . ')';
             }
             else {
-                $textStatus = 'Announced for : ' . ucfirst(strtolower($anime->season)) . ' ' . ($anime->seasonYear);
+                $textStatus = 'Announced for : ' . ucfirst(strtolower($anime->season ?? "")) . ' ' . ($anime->seasonYear);
             }
 
             $textAnimeGenres = '';
